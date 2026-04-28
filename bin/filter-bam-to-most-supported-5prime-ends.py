@@ -49,12 +49,9 @@ with pysam.AlignmentFile(BAM_IN, 'rb') as f:
             strand = '+' if read.is_forward else '-'
             CB = read.get_tag('CB')
             UMI = read.get_tag('UB')
-            assert read.has_tag('GX') or read.has_tag('GN'), 'Read is missing gene name tag (GX/GN)?'
-            gene_tag = 'GX' if read.has_tag('GX') else 'GN'
-            gene = read.get_tag(gene_tag)
-            gene_or_region = gene if gene != '-' else 'r' + str(int(five_prime_end // 1e6))
             if CB == '-' or UMI == '-':
                 continue
+            gene_or_region = read.get_tag('GX') if (read.has_tag('GX') and read.get_tag('GX') != '-') else 'r' + str(int(five_prime_end // 1e6))
             # ends.append([CB, UMI, chrom, five_prime_end, strand, gene, gene_or_region])
             key = (CB, UMI, chrom, strand, gene_or_region)
             if key not in counts:
@@ -100,13 +97,10 @@ with pysam.AlignmentFile(BAM_IN, 'rb') as f:
                 strand = '+' if read.is_forward else '-'
                 CB = read.get_tag('CB')
                 UMI = read.get_tag('UB')
-                assert read.has_tag('GX') or read.has_tag('GN'), 'Read is missing gene name tag (GX/GN)?'
-                gene_tag = 'GX' if read.has_tag('GX') else 'GN'
-                gene = read.get_tag(gene_tag)
-                gene_or_region = gene if gene != '-' else 'r' + str(int(five_prime_end // 1e6))
                 if CB == '-' or UMI == '-':
                     drop_other += 1
                     continue
+                gene_or_region = read.get_tag('GX') if (read.has_tag('GX') and read.get_tag('GX') != '-') else 'r' + str(int(five_prime_end // 1e6))
                 key = (CB, UMI, chrom, strand, gene_or_region)
                 assert(key in selected_ends)
                 if selected_ends[key] == five_prime_end:
