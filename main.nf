@@ -10,6 +10,34 @@ FASTA = params.fasta
 GTF = params.gtf
 
 
+def validate_config(config_path) {
+    def f = file(config_path)
+    if (!f.exists()) {
+        throw new IllegalArgumentException("Config file does not exist: ${config_path}")
+    }
+    def lines = f.readLines()
+    if (lines.isEmpty()) {
+        throw new IllegalArgumentException("Config file is empty: ${config_path}")
+    }
+    def header = lines[0].split('\t', -1)
+    def expected = ['library', 'readgroup', 'bam'] as Set
+    if (header.size() != 3 || (header as Set) != expected) {
+        throw new IllegalArgumentException(
+            "Config file must be a 3-column TSV with header columns library, readgroup, bam (any order). Got: ${header as List}"
+        )
+    }
+    lines.eachWithIndex { line, i ->
+        if (i == 0) return
+        def n = line.split('\t', -1).size()
+        if (n != 3) {
+            throw new IllegalArgumentException(
+                "Config file line ${i + 1} has ${n} tab-separated fields, expected 3"
+            )
+        }
+    }
+}
+
+
 def parse_config(config_path) {
     Channel.fromPath(config_path)
         .splitCsv(sep: '\t', header: true)
@@ -651,6 +679,7 @@ process make_bigwigs {
 
 workflow {
 
+    validate_config(CONFIG)
     bams = parse_config(CONFIG)
     adapters = Channel.fromPath(ADAPTERS)
     primers = Channel.fromPath(PRIMERS)

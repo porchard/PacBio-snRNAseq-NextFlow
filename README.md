@@ -10,7 +10,7 @@ Nextflow DSL2 pipeline for preprocessing PacBio Kinnex (MAS-Seq) single-nucleus 
 
 ## Input
 
-The pipeline is configured via command-line parameters. The primary input is a **tab-separated config file** with three columns:
+The pipeline is configured via command-line parameters. The primary input is a **tab-separated config file** with three columns, including a header line:
 
 | Column | Description |
 |--------|-------------|
