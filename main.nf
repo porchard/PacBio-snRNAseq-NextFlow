@@ -53,7 +53,7 @@ process segment {
     maxRetries 3
     errorStrategy {task.attempt <= maxRetries ? 'retry' : 'ignore'}
     cache 'lenient'
-    tag "${library}"
+    tag "${library} ${readgroup}"
     cpus 10
 
     input:
@@ -76,6 +76,7 @@ process remove_primers {
     memory '4 GB'
     cpus 10
     time '24h'
+    tag "${library} ${readgroup}"
 
     input:
     tuple val(library), val(readgroup), path(bam), path(primers)
@@ -96,6 +97,7 @@ process tag {
     memory '4 GB'
     cpus 10
     time '5h'
+    tag "${library} ${readgroup}"
 
     input:
     tuple val(library), val(readgroup), path(bam)
@@ -117,7 +119,7 @@ process rc_tags {
     container 'library://porchard/default/general:20220107'
     memory '4 GB'
     time '5h'
-    tag "${library}"
+    tag "${library} ${readgroup}"
 
     input:
     tuple val(library), val(readgroup), path(bam)
@@ -153,6 +155,7 @@ process refine {
     cpus 10
     time '24h'
     memory '5 GB'
+    tag "${library} ${readgroup}"
 
     input:
     tuple val(library), val(readgroup), path(bam), path(primers)
@@ -173,6 +176,7 @@ process merge_readgroups {
     cpus 10
     time '24h'
     memory '10 GB'
+    tag "${library}"
 
     input:
     tuple val(library), val(readgroups), path(bams)
@@ -201,6 +205,7 @@ process correct_barcodes {
     time '24h'
     memory '20 GB'
     label 'largemem'
+    tag "${library}"
 
     input:
     tuple val(library), path(bam), path(barcodes)
@@ -272,6 +277,7 @@ process align {
     cpus 20
     time '48h'
     memory '20 GB'
+    tag "${library}"
 
     input:
     tuple val(library), path(bam), path(index)
@@ -286,22 +292,24 @@ process align {
 }
 
 
-process index_bam {
+// some downstream tools (e.g. demuxlet) don't handle =/X CIGAR operators well, so sanitize them to M.
+process update_cigars {
 
-    container "library://porchard/default/general:20220107"
+    container "docker://porchard/samtools:1.24"
     memory '5 GB'
     time '24h'
     cache 'lenient'
     tag "${library}"
 
     input:
-    tuple val(library), path(bam)
+    tuple val(library), path("in.bam")
 
     output:
-    tuple val(library), path(bam), path("${bam}.bai")
+    tuple val(library), path("${library}.bam"), path("${library}.bam.bai")
 
     """
-    samtools index $bam
+    samtools view -b -h --sanitize cigarx in.bam -o ${library}.bam
+    samtools index ${library}.bam
     """
 
 }
@@ -355,13 +363,14 @@ process make_gtfdb {
 process isoquant {
 
     cpus 20
-    memory { 40.GB * task.attempt }
+    memory { 80.GB * task.attempt }
     publishDir "${params.results}/isoquant"
     container 'docker://porchard/isoquant:20240911'
     time '24h'
     label 'largemem'
     maxRetries 1
     errorStrategy 'retry'
+    tag "${library}"
 
     input:
     tuple val(library), path(bam), path(bam_index), path(fasta), path(gtfdb)
@@ -384,6 +393,7 @@ process assign_reads_to_transcripts {
     container 'library://porchard/default/general:20220107'
     time '5h'
     label 'largemem'
+    tag "${library}"
 
     input:
     tuple val(library), path(isoquant)
@@ -403,6 +413,7 @@ process assign_reads_to_genes {
     memory '7 GB'
     container 'library://porchard/default/general:20220107'
     time '10h'
+    tag "${library}"
 
     input:
     tuple val(library), path(bam), path(bam_index), path(gtf)
@@ -423,6 +434,7 @@ process add_tags {
     container 'library://porchard/default/general:20220107'
     time '10h'
     label 'largemem'
+    tag "${library}"
 
     input:
     tuple val(library), path('in.bam'), path(gene_assignments), path(transcript_assignments), path(gtf)
@@ -442,6 +454,7 @@ process sort_by_cb {
     container 'library://porchard/default/general:20220107'
     time '10h'
     cpus 10
+    tag "${library}"
 
     input:
     tuple val(library), path('in.bam')
@@ -462,6 +475,7 @@ process correct_umis {
     container 'docker://ontresearch/wf-single-cell:sha0fcdf10929fbef2d426bb985e16b81153a88c6f4'
     maxRetries 1
     errorStrategy 'retry'
+    tag "${library}"
 
     input:
     tuple val(library), path('in.bam')
@@ -483,6 +497,7 @@ process sort_bam {
     container 'library://porchard/default/general:20220107'
     time '10h'
     cpus 10
+    tag "${library}"
 
     input:
     tuple val(library), path('in.bam')
@@ -505,6 +520,7 @@ process make_count_matrices {
     container 'library://porchard/default/general:20220107'
     maxRetries 2
     errorStrategy 'retry'
+    tag "${library}"
 
     input:
     tuple val(library), path(bam), path(gtf)
@@ -528,6 +544,7 @@ process calculate_qc_metrics {
     container 'library://porchard/default/general:20220107'
     maxRetries 1
     errorStrategy 'retry'
+    tag "${library}"
 
     input:
     tuple val(library), path(bam)
@@ -548,6 +565,7 @@ process trim_for_scafe {
     container 'docker://porchard/general:20220406125608'
     time '10h'
     memory '5 GB'
+    tag "${library}"
 
     input:
     tuple val(library), path(bam)
@@ -571,6 +589,7 @@ process filter_5prime_ends_for_scafe {
     memory '75 GB'
     time '10h'
     label 'largemem'
+    tag "${library}"
 
     input:
     tuple val(library), path(bam), path(bam_index)
@@ -594,6 +613,7 @@ process cellbender {
     container 'docker://porchard/cellbender:0.3.0'
     time '24h'
     label 'gpu'
+    tag "${library}"
 
     input:
     tuple val(library), path('matrix.mtx'), path('genes.tsv'), path('barcodes.tsv'), val(feature_type)
@@ -699,7 +719,7 @@ workflow {
     merged = merge_readgroups(refined.groupTuple(by: 0))
     corrected = correct_barcodes(merged.combine(barcodes)) | reset_failed_barcodes
 
-    aligned = align(corrected.combine(mm_index)) | index_bam
+    aligned = align(corrected.combine(mm_index)) | update_cigars
 
     transcript_assignments = aligned.combine(fasta).combine(gtfdb) | isoquant | assign_reads_to_transcripts
     gene_assignments = aligned.combine(gtf) | assign_reads_to_genes
