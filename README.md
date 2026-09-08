@@ -63,7 +63,8 @@ results/
 ├── count-matrices/         # Gene and transcript MatrixMarket files (.matrix.mtx, .features.tsv, .barcodes.tsv)
 ├── qc/                     # Per-cell QC metrics (TSV)
 ├── isoquant/               # IsoQuant read assignments
-├── cellbender/             # CellBender-corrected matrices (.h5)
+├── cellbender/             # CellBender-corrected matrices (.h5), one subdir per learning rate
+│   └── learning-rate-*/
 ├── preprocess-for-scafe/   # BAM files preprocessed for SCAFE
 └── bigwig/                 # Strand-specific bigwigs
 ```

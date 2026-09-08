@@ -609,7 +609,7 @@ process filter_5prime_ends_for_scafe {
 process cellbender {
 
     memory '40 GB'
-    publishDir "${params.results}/cellbender"
+    publishDir "${params.results}/cellbender/learning-rate-${learning_rate}"
     container 'docker://porchard/cellbender:0.3.0'
     time '24h'
     label 'gpu'
@@ -617,13 +617,14 @@ process cellbender {
 
     input:
     tuple val(library), path('matrix.mtx'), path('genes.tsv'), path('barcodes.tsv'), val(feature_type)
+    each learning_rate
 
     output:
     path("${library}*")
     path("${library}*.h5"), emit: h5_files
 
     """
-    cellbender remove-background --cuda --epochs 150 --fpr 0.01 0.05 0.1 --input . --output ./${library}.${feature_type}.cellbender.h5
+    cellbender remove-background --cuda --epochs 150 --fpr 0.01 0.05 0.1 --learning-rate ${learning_rate} --input . --output ./${library}.${feature_type}.cellbender.h5
     cp .command.log ${library}.${feature_type}.log
     """
 
@@ -728,7 +729,7 @@ workflow {
     count_matrices = make_count_matrices(processed_bams.combine(gtf))
     calculate_qc_metrics(processed_bams)
 
-    count_matrices.gene_matrices.map({it -> it + ['genes']}).mix(count_matrices.transcript_matrices.map({it -> it + ['transcripts']})) | cellbender
+    cellbender(count_matrices.gene_matrices.map({it -> it + ['genes']}).mix(count_matrices.transcript_matrices.map({it -> it + ['transcripts']})), ['0.0001', '0.00001'])
 
     make_bigwigs(chrom_sizes, make_bedgraphs(processed_bams).flatten())
 
