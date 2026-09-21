@@ -73,6 +73,29 @@ def amount_of_softclipping(read, end='5prime'):
         return 0
 
 
+def fix_terminal_insertions(cigartuples):
+    """Convert insertions at either end of the CIGAR into soft clips.
+
+    Trimming can leave an I as the first or last operation, which is invalid
+    (both consume query but not reference, so replacing I with S leaves the
+    read length and mapping position unchanged). Adjacent soft clips are merged.
+    """
+    cigartuples = list(cigartuples)
+    for reverse in [False, True]:
+        if reverse:
+            cigartuples.reverse()
+        start = 1 if cigartuples and CIGAR_OP[cigartuples[0][0]] == 'H' else 0
+        end = start
+        while end < len(cigartuples) and CIGAR_OP[cigartuples[end][0]] in ['S', 'I']:
+            end += 1
+        if any(CIGAR_OP[cigar_op] == 'I' for cigar_op, cigar_length in cigartuples[start:end]):
+            clipped = sum(cigar_length for cigar_op, cigar_length in cigartuples[start:end])
+            cigartuples[start:end] = [(REV_CIGAR_OP['S'], clipped)]
+        if reverse:
+            cigartuples.reverse()
+    return cigartuples
+
+
 def trim(read, final_length, trim_from_end='3prime'):
     assert(trim_from_end in ['5prime', '3prime'])
     assert(isinstance(final_length, int))
@@ -131,6 +154,8 @@ def trim(read, final_length, trim_from_end='3prime'):
                     break
             else:
                 new_cigartuples.append(i)
+
+    new_cigartuples = fix_terminal_insertions(new_cigartuples)
 
     read.query_sequence = new_sequence
     read.query_qualities = new_qualities
