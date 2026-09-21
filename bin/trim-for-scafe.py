@@ -192,8 +192,12 @@ with pysam.AlignmentFile(BAM, 'rb') as f:
 
 
 
+def percent_of_total(count):
+    return 'NA' if total_reads == 0 else round(count/total_reads*100, 3)
+
+
 logging.info('Processed {:,} reads total.'.format(total_reads))
-logging.info('Skipped {:,} reads ({}%) total. Breakdown below.'.format(skipped_unmapped + skipped_softclipping + skipped_not_primary, round((skipped_unmapped + skipped_softclipping + skipped_not_primary)/total_reads*100, 3)))
-logging.info('Skipped {:,} reads ({}%) due to being unmapped'.format(skipped_unmapped, round(skipped_unmapped/total_reads*100, 3)))
-logging.info('Skipped {:,} reads ({}%) due to being supplementary or secondary'.format(skipped_not_primary, round(skipped_not_primary/total_reads*100, 3)))
-logging.info('Skipped {:,} reads ({}%) due to too much softclipping'.format(skipped_softclipping, round(skipped_softclipping/total_reads*100, 3)))
+logging.info('Skipped {:,} reads ({}%) total. Breakdown below.'.format(skipped_unmapped + skipped_softclipping + skipped_not_primary, percent_of_total(skipped_unmapped + skipped_softclipping + skipped_not_primary)))
+logging.info('Skipped {:,} reads ({}%) due to being unmapped'.format(skipped_unmapped, percent_of_total(skipped_unmapped)))
+logging.info('Skipped {:,} reads ({}%) due to being supplementary or secondary'.format(skipped_not_primary, percent_of_total(skipped_not_primary)))
+logging.info('Skipped {:,} reads ({}%) due to too much softclipping'.format(skipped_softclipping, percent_of_total(skipped_softclipping)))
