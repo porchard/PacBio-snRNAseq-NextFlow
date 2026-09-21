@@ -82,14 +82,14 @@ def trim(read, final_length, trim_from_end='3prime'):
     new_cigartuples = []
     new_pos = read.reference_start
     if (trim_from_end == '3prime' and read.is_reverse) or (trim_from_end == '5prime' and not read.is_reverse): # trimming from the left when visualizing the BAM file
-        new_qualities = read.query_qualities[-final_length:]
+        new_qualities = None if read.query_qualities is None else read.query_qualities[-final_length:]
         new_sequence = read.query_sequence[-final_length:]
         cumulative_length = 0
         query_cigar_complete = False
 
         for i in read.cigartuples[::-1]:
             cigar_op, cigar_length = i
-            if cigar_op in UNSUPPORTED_CIGAR_OPS:
+            if CIGAR_OP[cigar_op] in UNSUPPORTED_CIGAR_OPS:
                 raise ValueError('Do not support CIGAR operation: {} (read: {})'.format(CIGAR_OP[cigar_op], read.query_name))
             if query_cigar_complete:
                 if CONSUMES_REFERENCE[cigar_op]:
@@ -112,12 +112,12 @@ def trim(read, final_length, trim_from_end='3prime'):
         new_cigartuples.reverse()
 
     else: # trimming from the right. No need to update mapping position
-        new_qualities = read.query_qualities[:final_length]
+        new_qualities = None if read.query_qualities is None else read.query_qualities[:final_length]
         new_sequence = read.query_sequence[:final_length]
         cumulative_length = 0
         for i in read.cigartuples:
             cigar_op, cigar_length = i
-            if cigar_op in UNSUPPORTED_CIGAR_OPS:
+            if CIGAR_OP[cigar_op] in UNSUPPORTED_CIGAR_OPS:
                 raise ValueError('Do not support CIGAR operation: {} (read: {})'.format(CIGAR_OP[cigar_op], read.query_name))
             if CONSUMES_QUERY[cigar_op]:
                 if cumulative_length + cigar_length < final_length:
