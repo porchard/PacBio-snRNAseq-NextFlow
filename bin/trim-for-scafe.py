@@ -135,7 +135,6 @@ def trim(read, final_length, trim_from_end='3prime'):
     read.query_sequence = new_sequence
     read.query_qualities = new_qualities
     read.cigartuples = new_cigartuples
-    read.cigarstring = ''.join(['{}{}'.format(i[1], CIGAR_OP[i[0]]) for i in new_cigartuples])
     read.reference_start = new_pos # todo: any need to update reference_end? I believe no because that's not actually written to the BAM file, just inferred by pysam I think.
     
     return read
