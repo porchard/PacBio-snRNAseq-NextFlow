@@ -511,6 +511,28 @@ process sort_bam {
 
 }
 
+
+process index_bam {
+
+    memory '3 GB'
+    publishDir "${params.results}/bam"
+    container 'library://porchard/default/general:20220107'
+    time '10h'
+    tag "${library}"
+
+    input:
+    tuple val(library), path(bam)
+
+    output:
+    path("*.bam.bai")
+
+    """
+    samtools index $bam
+    """
+
+}
+
+
 process make_count_matrices {
 
     memory { 50.GB * task.attempt }
@@ -726,6 +748,7 @@ workflow {
     gene_assignments = aligned.combine(gtf) | assign_reads_to_genes
 
     processed_bams = gene_assignments.combine(transcript_assignments, by: 0).combine(gtf) | add_tags | sort_by_cb | correct_umis | sort_bam
+    index_bam(processed_bams)
     count_matrices = make_count_matrices(processed_bams.combine(gtf))
     calculate_qc_metrics(processed_bams)
 
