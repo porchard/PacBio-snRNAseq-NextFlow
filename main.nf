@@ -581,6 +581,27 @@ process calculate_qc_metrics {
 }
 
 
+process plot_qc {
+
+    memory '7 GB'
+    publishDir "${params.results}/qc"
+    container 'docker://porchard/multiome_qc:20260929'
+    time '1h'
+    tag "${library}"
+
+    input:
+    tuple val(library), path(metrics)
+
+    output:
+    path("*.png")
+
+    """
+    plot-qc.py --rna-metrics $metrics --prefix ${library}.
+    """
+
+}
+
+
 process trim_for_scafe {
 
     publishDir "${params.results}/preprocess-for-scafe"
@@ -750,7 +771,7 @@ workflow {
     processed_bams = gene_assignments.combine(transcript_assignments, by: 0).combine(gtf) | add_tags | sort_by_cb | correct_umis | sort_bam
     index_bam(processed_bams)
     count_matrices = make_count_matrices(processed_bams.combine(gtf))
-    calculate_qc_metrics(processed_bams)
+    calculate_qc_metrics(processed_bams) | plot_qc
 
     cellbender(count_matrices.gene_matrices.map({it -> it + ['genes']}).mix(count_matrices.transcript_matrices.map({it -> it + ['transcripts']})), ['0.0001', '0.00001'])
 
